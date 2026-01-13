@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import CityInput from "./components/CityInput";
 import WeatherResult from "./components/WeatherResult";
 import Loading from "./components/Loading";
-import "./App.css"
+import "./App.css";
 
-// mendefinisikan struktur data yang diterima dari API Openweather
+// struktur data cuaca dari API OpenWeather
 interface Weather {
   name: string;
   main: {
@@ -15,74 +15,82 @@ interface Weather {
   }[];
 }
 
-// mengambil API_KEY dari file .env
-const API_KEY = import.meta.env.VITE_OPENWEATHER_API_KEY;;
+// mengambil API key dari .env
+const API_KEY = import.meta.env.VITE_OPENWEATHER_API_KEY;
 
-// komponen utama
 function App() {
-  // state managemen
-  // menyimpan nama kota yang diinput user dengan default string kosong
+  // state input kota (controlled form)
   const [city, setCity] = useState("");
-  // menyimpan data cuaca bisa berupa weather = jika berhasil atau null = jika belum ada data
+
+  // state data cuaca
   const [weather, setWeather] = useState<Weather | null>(null);
-  // menyimpan status loading, true = sedang fetch data dan false = fetch selesai
+
+  // state loading
   const [loading, setLoading] = useState(false);
-  // menyimpan pesan error
+
+  // state error
   const [error, setError] = useState<string | null>(null);
-  // fungsi delay untuk menunda eksekusi selama beberapa milidetik
-  const delay = (ms: number) =>
-  new Promise((resolve) => setTimeout(resolve, ms));
 
-  // fungsi async fetch weather untuk mengambil data cuaca dari API
-  const fetchWeather = async () => {
-    // validasi input kota apakah kosong atau hanya spasi, jika iya hentikan fungsi(tidak fetch api)
-  if (!city.trim()) return;
-
-  try {
-    // set state sebelum fetch
-    // tampilkan loading
-    setLoading(true);
-    // hapus error sebelumnya
-    setError(null);
-    // reset data lama agar tidak menampilkan data lama
-    setWeather(null); 
-
-    // menunggu 2 detik sebelum fetch api
-    await delay(2000);
-
-    // fetch api dari OpenWeather
-    const res = await fetch(
-      `https://api.openweathermap.org/data/2.5/weather?q=${city},ID&units=metric&appid=${API_KEY}`
-    );
-
-    // validasi response
-    if (!res.ok) {
-      throw new Error("Kota tidak ditemukan");
+  // useEffect untuk debounce + API fetch
+  useEffect(() => {
+    // validasi input kosong
+    if (!city.trim()) {
+      setWeather(null);
+      setError(null);
+      return;
     }
 
-    // ambil data json, mengubah respon ke json dan menyimpan data ke state
-    const data = await res.json();
-    setWeather(data);
+    // debounce timer
+    const timer = setTimeout(async () => {
+      try {
+        setLoading(true);
+        setError(null);
 
-  } catch (err) {
-    setError((err as Error).message);
-    // selalu dijalankan, menghentingkan loading, baik sukses maupun gagal
-  } finally {
-    setLoading(false);
-  }
-};
+        const res = await fetch(
+          `https://api.openweathermap.org/data/2.5/weather?q=${city},ID&units=metric&appid=${API_KEY}`
+        );
+
+        if (!res.ok) {
+          throw new Error("Kota tidak ditemukan");
+        }
+
+        const data = await res.json();
+        setWeather(data);
+      } catch (err) {
+        setWeather(null);
+        setError((err as Error).message);
+      } finally {
+        setLoading(false);
+      }
+    }, 800); // debounce 800ms
+
+    // cleanup function → membatalkan timer jika user masih mengetik
+    return () => clearTimeout(timer);
+
+  }, [city]); // useEffect akan dijalankan setiap city berubah
 
   return (
     <>
-      {/* judul aplikasi */}
       <h1 style={{ textAlign: "center" }}>Weather App</h1>
-      {/* input kota , lalu update state city, dan trigger fetch cuaca*/}
-      <CityInput city={city} onChange={setCity} onSubmit={fetchWeather} />
-      {/* menampilkan komponen loading saat loading = true */}
+
+      {/* controlled form */}
+      <CityInput
+        city={city}
+        onChange={setCity}
+        onSubmit={() => {}} // submit tidak dipakai lagi
+      />
+
+      {/* loading state */}
       {loading && <Loading />}
-      {/* menampilkan pesan error jika data tersedia */}
-      {error && <p style={{ color: "red", textAlign: "center" }}>{error}</p>}
-      {/* menampilkan hasil cuaca jika data tersedia */}
+
+      {/* error state */}
+      {error && (
+        <p style={{ color: "red", textAlign: "center" }}>
+          {error}
+        </p>
+      )}
+
+      {/* hasil cuaca */}
       {weather && <WeatherResult data={weather} />}
     </>
   );
