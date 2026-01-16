@@ -11,6 +11,10 @@ import { useEffect, useState } from "react"
 import { api } from "@/services/api"
 import { Button } from "@/components/ui/button"
 import { useCart } from "@/hooks/useCart"
+import { Input } from "@/components/ui/input"
+import { useDebounce } from "@/hooks/useDebounce"
+import { Search } from "lucide-react"
+
 
 type ProductType = {
   id:number
@@ -25,6 +29,13 @@ export default function Products() {
   const [loading, setLoading] = useState(true)
   const { cart, addToCart } = useCart()
   const [loadingId, setLoadingId] = useState<number | null>(null)
+  const [search, setSearch] = useState("")
+  const debouncedSearch = useDebounce(search, 500)
+
+  const filteredProducts = products.filter((product) =>
+  product.title.toLowerCase().includes(debouncedSearch.toLowerCase())
+)
+
 
   useEffect(() => {
     const fetchData = async () => {
@@ -44,12 +55,27 @@ export default function Products() {
 
   return (
     <div className="max-w-7xl mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-6">Products</h1>
+      <div className="flex items-center mb-6">
+          <h1 className="text-2xl font-bold">Products</h1>
+
+          <div className="relative w-72 ms-auto">
+            <Search
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+              size={18}
+            />
+
+            <Input
+              placeholder="Search product"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+        </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {products.map((product) => {
+        {filteredProducts.map((product) => {
           const isInCart = cart.some(item => item.id === product.id)
-
           return (
             <Dialog key={product.id}>
               {/* 🔹 Card → buka dialog */}
@@ -108,7 +134,7 @@ export default function Products() {
                       
                     }
                     >
-                     {loadingId === product.id ? "Adding..." : isInCart ? "Added" : "Add to Cart"}
+                    {loadingId === product.id ? "Adding..." : isInCart ? "Added" : "Add to Cart"}
                   </Button>
                 </DialogHeader>
               </DialogContent>

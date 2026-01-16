@@ -17,7 +17,6 @@ function Header() {
   return (
 
     <div className="w-full flex gap-4 p-4 justify-center border-b mb-8">
-       
           <Button asChild variant="outline">
             <Link to="/">Home</Link>
           </Button>
